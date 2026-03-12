@@ -57,12 +57,6 @@ class PotholeListResponse(BaseModel):
     page_size: int
 
 
-class PotholeDetailResponse(PotholeResponse):
-    complaints: list[ComplaintResponse] = Field(default_factory=list)
-    scans: list[ScanResponse] = Field(default_factory=list)
-    source_reports: list[SourceReportResponse] = Field(default_factory=list)
-
-
 # ═══════════════════════════════════════════════════════════════════
 # COMPLAINT SCHEMAS
 # ═══════════════════════════════════════════════════════════════════
@@ -121,6 +115,12 @@ class SourceReportResponse(BaseModel):
     device_id: UUID | None = None
     mapillary_image_key: str | None = None
     drone_mission_id: int | None = None
+
+
+class PotholeDetailResponse(PotholeResponse):
+    complaints: list[ComplaintResponse] = Field(default_factory=list)
+    scans: list[ScanResponse] = Field(default_factory=list)
+    source_reports: list[SourceReportResponse] = Field(default_factory=list)
 
 
 # ═══════════════════════════════════════════════════════════════════

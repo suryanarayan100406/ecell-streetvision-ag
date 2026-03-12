@@ -737,9 +737,9 @@ async def get_settings(
 @router.put("/settings/{key}")
 async def update_setting(
     key: str,
-    value: str = Query(...),
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[AdminUser, Depends(require_admin_role)],
+    value: str = Query(...),
 ) -> dict:
     """Update a system setting."""
     result = await db.execute(select(SystemSetting).where(SystemSetting.key == key))

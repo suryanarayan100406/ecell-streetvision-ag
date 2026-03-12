@@ -13,6 +13,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from app.config import settings
 from app.database import engine, Base
 from app.utils.logging import setup_logging, get_logger
+from sqlalchemy import text as sqlalchemy_text
 
 # ── Structured logging ────────────────────────────────────────
 setup_logging()
@@ -31,31 +32,35 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Create tables on startup, cleanup on shutdown."""
     logger.info("starting_application")
 
-    # Create tables if they don't exist (dev convenience; prod uses Alembic)
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    try:
+        # Create PostGIS extension + tables if they don't exist
+        async with engine.begin() as conn:
+            await conn.execute(sqlalchemy_text("CREATE EXTENSION IF NOT EXISTS postgis"))
+            await conn.run_sync(Base.metadata.create_all)
 
-    # Create default admin user if not exists
-    from app.utils.auth import hash_password
-    from app.models import AdminUser
-    from app.database import async_session_factory
-    from sqlalchemy import select
+        # Create default admin user if not exists
+        from app.utils.auth import hash_password
+        from app.models import AdminUser
+        from app.database import async_session_factory
+        from sqlalchemy import select
 
-    async with async_session_factory() as session:
-        result = await session.execute(
-            select(AdminUser).where(AdminUser.email == settings.ADMIN_DEFAULT_EMAIL)
-        )
-        if result.scalar_one_or_none() is None:
-            admin = AdminUser(
-                email=settings.ADMIN_DEFAULT_EMAIL,
-                name="System Admin",
-                role="SUPER_ADMIN",
-                password_hash=hash_password(settings.ADMIN_DEFAULT_PASSWORD),
-                status="ACTIVE",
+        async with async_session_factory() as session:
+            result = await session.execute(
+                select(AdminUser).where(AdminUser.email == settings.ADMIN_DEFAULT_EMAIL)
             )
-            session.add(admin)
-            await session.commit()
-            logger.info("default_admin_created", email=settings.ADMIN_DEFAULT_EMAIL)
+            if result.scalar_one_or_none() is None:
+                admin = AdminUser(
+                    email=settings.ADMIN_DEFAULT_EMAIL,
+                    name="System Admin",
+                    role="SUPER_ADMIN",
+                    password_hash=hash_password(settings.ADMIN_DEFAULT_PASSWORD),
+                    status="ACTIVE",
+                )
+                session.add(admin)
+                await session.commit()
+                logger.info("default_admin_created", email=settings.ADMIN_DEFAULT_EMAIL)
+    except Exception as e:
+        logger.warning("startup_db_init_failed", error=str(e))
 
     yield
 
@@ -91,8 +96,9 @@ app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
 app.include_router(mobile.router, prefix="/api/mobile", tags=["Mobile"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"])
 
-# ── Mount Socket.IO ASGI app ─────────────────────────────────
-socket_app = socketio.ASGIApp(sio, other_app=app)
+# ── Mount Socket.IO ──────────────────────────────────────────
+sio_asgi = socketio.ASGIApp(sio)
+app.mount("/socket.io", sio_asgi)
 
 
 @app.get("/health")
