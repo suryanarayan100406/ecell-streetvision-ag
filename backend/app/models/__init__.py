@@ -24,7 +24,7 @@ class Pothole(Base):
     __tablename__ = "potholes"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    geom = mapped_column(Geometry("POINT", srid=4326), nullable=False, index=True)
+    geom = mapped_column(Geometry("POINT", srid=4326), nullable=False)
     severity: Mapped[str | None] = mapped_column(String(8))
     area_sqm: Mapped[Decimal | None] = mapped_column(Numeric(8, 4))
     depth_cm: Mapped[Decimal | None] = mapped_column(Numeric(6, 2))
@@ -175,7 +175,7 @@ class RoadSegment(Base):
     __tablename__ = "road_segments"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    geom = mapped_column(Geometry("LINESTRING", srid=4326), nullable=False, index=True)
+    geom = mapped_column(Geometry("LINESTRING", srid=4326), nullable=False)
     highway: Mapped[str | None] = mapped_column(String(20))
     km_start: Mapped[Decimal | None] = mapped_column(Numeric(7, 2))
     km_end: Mapped[Decimal | None] = mapped_column(Numeric(7, 2))
@@ -449,11 +449,3 @@ class SystemSetting(Base):
     modified_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("admin_users.id", ondelete="SET NULL"))
     description: Mapped[str | None] = mapped_column(Text)
 
-
-# ── Spatial Indexes ───────────────────────────────────────────────
-Index("idx_potholes_geom", Pothole.geom, postgresql_using="gist")
-Index("idx_source_reports_gps", SourceReport.gps, postgresql_using="gist")
-Index("idx_road_segments_geom", RoadSegment.geom, postgresql_using="gist")
-Index("idx_road_accidents_geom", RoadAccident.geom, postgresql_using="gist")
-Index("idx_cctv_nodes_geom", CCTVNode.geom, postgresql_using="gist")
-Index("idx_weather_cache_geom", WeatherCache.grid_cell_geom, postgresql_using="gist")

@@ -7,8 +7,8 @@ export default defineConfig({
   server: {
     port: 3001,
     proxy: {
-      '/api': 'http://localhost:8000',
-      '/socket.io': { target: 'http://localhost:8000', ws: true },
+      '/api': 'http://127.0.0.1:8000',
+      '/socket.io': { target: 'http://127.0.0.1:8000', ws: true },
     },
   },
 })
